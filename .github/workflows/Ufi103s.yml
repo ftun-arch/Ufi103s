@@ -1,0 +1,50 @@
+name: Test Build Ufi103s
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync subversion swig time unzip zlib1g-dev
+
+      - name: Clone Source
+        run: git clone https://github.com/Smartsmurf/openwrt-uz801.git openwrt
+
+      - name: Update and install feeds
+        working-directory: ./openwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load custom configuration
+        run: |
+          if [ -f .config ]; then
+            mv .config openwrt/.config
+          fi
+          
+      - name: Build firmware
+        working-directory: ./openwrt
+        run: |
+          make defconfig
+          make -j$(nproc) V=s
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ufi103s-firmware
+          path: openwrt/bin/targets/
